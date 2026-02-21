@@ -1,0 +1,335 @@
+{
+    "info": {
+        "name": "SnipBox API",
+        "_postman_id": "snipbox-collection-v1",
+        "description": "SnipBox backend API collection — Django REST Framework + JWT Auth",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8000",
+            "type": "string"
+        },
+        {
+            "key": "access_token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "refresh_token",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Login (Obtain Token)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.collectionVariables.set('access_token', json.access);",
+                                    "pm.collectionVariables.set('refresh_token', json.refresh);",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Has access token', () => pm.expect(json.access).to.be.a('string'));",
+                                    "pm.test('Has refresh token', () => pm.expect(json.refresh).to.be.a('string'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/token/"
+                    }
+                },
+                {
+                    "name": "Refresh Token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.collectionVariables.set('access_token', json.access);",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Has new access token', () => pm.expect(json.access).to.be.a('string'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/token/refresh/"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Snippets",
+            "item": [
+                {
+                    "name": "Overview — List All Snippets",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Has total', () => pm.expect(json.total).to.be.a('number'));",
+                                    "pm.test('Has snippets array', () => pm.expect(json.snippets).to.be.an('array'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/snippets/"
+                    }
+                },
+                {
+                    "name": "Create Snippet",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.collectionVariables.set('snippet_id', json.id);",
+                                    "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                                    "pm.test('Has id', () => pm.expect(json.id).to.be.a('number'));",
+                                    "pm.test('Tags deduplication', () => pm.expect(json.tags).to.be.an('array'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"My First Snippet\",\n  \"note\": \"This is a quick note saved with SnipBox.\",\n  \"tags\": [\n    {\"title\": \"django\"},\n    {\"title\": \"python\"}\n  ]\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/snippets/"
+                    }
+                },
+                {
+                    "name": "Get Snippet Detail",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Has title', () => pm.expect(json.title).to.be.a('string'));",
+                                    "pm.test('Has note', () => pm.expect(json.note).to.be.a('string'));",
+                                    "pm.test('Has created_at', () => pm.expect(json.created_at).to.be.a('string'));",
+                                    "pm.test('Has updated_at', () => pm.expect(json.updated_at).to.be.a('string'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/snippets/{{snippet_id}}/"
+                    }
+                },
+                {
+                    "name": "Update Snippet (PUT)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Title updated', () => pm.expect(json.title).to.eql('Updated Snippet Title'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Updated Snippet Title\",\n  \"note\": \"Updated note content.\",\n  \"tags\": [\n    {\"title\": \"django\"}\n  ]\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/snippets/{{snippet_id}}/"
+                    }
+                },
+                {
+                    "name": "Partial Update Snippet (PATCH)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"note\": \"Only updating the note.\"\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/snippets/{{snippet_id}}/"
+                    }
+                },
+                {
+                    "name": "Delete Snippet",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Returns remaining list', () => pm.expect(json.snippets).to.be.an('array'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/snippets/{{snippet_id}}/"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Tags",
+            "item": [
+                {
+                    "name": "Tag List",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Is array', () => pm.expect(json).to.be.an('array'));",
+                                    "if (json.length > 0) { pm.collectionVariables.set('tag_id', json[0].id); }"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/tags/"
+                    }
+                },
+                {
+                    "name": "Tag Detail (Snippets linked to tag)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var json = pm.response.json();",
+                                    "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                                    "pm.test('Has tag', () => pm.expect(json.tag).to.be.an('object'));",
+                                    "pm.test('Has snippets', () => pm.expect(json.snippets).to.be.an('array'));",
+                                    "pm.test('Has total_snippets', () => pm.expect(json.total_snippets).to.be.a('number'));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{access_token}}"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/tags/{{tag_id}}/"
+                    }
+                }
+            ]
+        }
+    ]
+}
