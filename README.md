@@ -10,8 +10,9 @@
 - Save snippets (title + note) with automatic timestamps
 - Organize snippets with reusable tags (deduplicated — one tag per unique title)
 - JWT-based authentication (login + token refresh)
-- Full CRUD for snippets
+- Full CRUD for snippets with input validation and error handling
 - Tag list and tag-to-snippets lookup
+- Django Admin for managing snippets and tags
 
 ---
 
@@ -21,10 +22,10 @@
 |---|---|
 | Backend | Django 4.2 |
 | REST API | Django REST Framework 3.15 |
-| Auth | djangorestframework-simplejwt |
-| Database (local) | SQLite |
-| Database (Docker) | PostgreSQL 15 |
+| Auth | djangorestframework-simplejwt 5.3 |
+| Database | SQLite |
 | Server | Gunicorn |
+| Container | Docker + Docker Compose |
 
 ---
 
@@ -69,7 +70,7 @@ pip install -r requirements.txt
 python manage.py migrate
 ```
 
-### 5. Create a superuser (optional but recommended for Django Admin)
+### 5. Create a superuser
 
 ```bash
 python manage.py createsuperuser
@@ -81,7 +82,8 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-The API is now available at **http://127.0.0.1:8000/**
+The API is now available at **http://127.0.0.1:8000/**  
+The Django Admin is available at **http://127.0.0.1:8000/admin/**
 
 ---
 
@@ -95,65 +97,88 @@ python manage.py test snippets
 
 ## Docker Deployment
 
-### Prerequisites
-- Docker
-- Docker Compose
-
-### Start with Docker Compose
-
 ```bash
 docker-compose up --build
 ```
 
 This will:
-1. Start a PostgreSQL 15 database
-2. Run Django migrations automatically
-3. Create a superuser (`admin` / `admin123`)
-4. Start the Gunicorn server on port **8000**
+1. Run Django migrations automatically
+2. Create a superuser (`admin` / `admin123`)
+3. Start the Gunicorn server on port **8000**
 
-### Stop
-
+To stop:
 ```bash
 docker-compose down
 ```
-
-To remove the database volume as well:
-
-```bash
-docker-compose down -v
-```
-
-### Environment Variables (Docker)
-
-| Variable | Default | Description |
-|---|---|---|
-| `USE_POSTGRES` | `False` | Set to `True` to use PostgreSQL |
-| `POSTGRES_DB` | `snipbox` | Database name |
-| `POSTGRES_USER` | `snipbox` | Database user |
-| `POSTGRES_PASSWORD` | `snipbox` | Database password |
-| `POSTGRES_HOST` | `db` | Database host |
-| `POSTGRES_PORT` | `5432` | Database port |
 
 ---
 
 ## API Endpoints
 
-| Method | Endpoint | Description | Auth |
-|---|---|---|---|
-| POST | `/api/v1/token/` | Login — get access + refresh tokens 
-| POST | `/api/v1/token/refresh/` | Get new access token via refresh 
-| GET | `/api/v1/snippets/` | Overview: total count + snippet list 
-| POST | `/api/v1/snippets/` | Create a new snippet 
-| GET | `/api/v1/snippets/<id>/` | Get snippet detail (own only) 
-| PUT | `/api/v1/snippets/<id>/` | Full update of snippet 
-| PATCH | `/api/v1/snippets/<id>/` | Partial update of snippet 
-| DELETE | `/api/v1/snippets/<id>/` | Delete snippet; returns remaining list 
-| GET | `/api/v1/tags/` | List all tags 
-| GET | `/api/v1/tags/<id>/` | Tag detail + linked snippets 
+### Authentication
 
-> **Auth**: All CRUD endpoints require `Authorization: Bearer <access_token>` header.
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/token/` | Login — returns `access` + `refresh` tokens |
+| POST | `/api/token/refresh/` | Get a new access token using refresh token |
 
-See [`postman_collection.json`](postman_collection.json) for ready-to-import API test collection.
+> All CRUD endpoints require the header: `Authorization: Bearer <access_token>`
+
+### Snippets
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/snippets/` | Overview — total count + list with detail links |
+| POST | `/api/snippets/` | Create a new snippet |
+| GET | `/api/snippets/<id>/` | Get snippet detail (owner only) |
+| PUT | `/api/snippets/<id>/` | Full update |
+| PATCH | `/api/snippets/<id>/` | Partial update |
+| DELETE | `/api/snippets/<id>/` | Delete snippet; returns remaining list |
+
+### Tags
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/tags/` | List all tags |
+| GET | `/api/tags/<id>/` | Tag detail + linked snippets (current user) |
+
+---
+
+## Sample Request — Create Snippet
+
+```bash
+# 1. Login
+curl -X POST http://127.0.0.1:8000/api/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# 2. Create a snippet (replace <token> with the access token from step 1)
+curl -X POST http://127.0.0.1:8000/api/snippets/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "My First Snippet",
+    "note": "This is a quick note.",
+    "tags": [{"title": "django"}, {"title": "python"}]
+  }'
+```
+
+> **Tag deduplication**: If a tag with the same title already exists, it is reused — no duplicate tags are created.
+
+See [`postman_collection.json`](postman_collection.json) for the full Postman API collection.
+
+---
+
+## Error Handling
+
+All endpoints return structured error responses:
+
+| Status | Meaning |
+|---|---|
+| `400` | Validation error — missing fields, bad tag format, empty body |
+| `401` | Unauthenticated — missing or invalid token |
+| `404` | Snippet / tag not found or not owned by current user |
+| `500` | Unexpected server error |
 
 ---
 
@@ -166,34 +191,32 @@ See [`schema.md`](schema.md) for the full ER diagram.
 ## Project Structure
 
 ```
-snipbox-be/
 snipbox
-    ├── Dockerfile
-    ├── README.md
-    ├── README_local.md
-    ├── db.sqlite3
-    ├── docker-compose.yml
-    ├── manage.py
-    ├── postman_collection.json
-    ├── requirements.txt
-    ├── schema.md
-    ├── snipbox
-    │   ├── __init__.py
-    │   ├── asgi.py
-    │   ├── settings.py
-    │   ├── urls.py
-    │   └── wsgi.py
-    └── snippets
-        ├── __init__.py
-        ├── admin.py
-        ├── apps.py
-        ├── migrations
-        │   └── __init__.py
-        ├── models.py
-        ├── serializers.py
-        ├── tests.py
-        ├── urls.py
-        └── views.py
+├── Dockerfile
+├── README.md
+├── db.sqlite3
+├── docker-compose.yml
+├── manage.py
+├── postman_collection.json
+├── requirements.txt
+├── schema.md
+├── snipbox
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+└── snippets
+    ├── __init__.py
+    ├── admin.py
+    ├── apps.py
+    ├── migrations
+    │   └── __init__.py
+    ├── models.py
+    ├── serializers.py
+    ├── tests.py
+    ├── urls.py
+    └── views.py
 ```
 
 ---
@@ -202,5 +225,5 @@ snipbox
 
 - Follows **PEP-8** coding standards
 - All endpoints return JSON
-- Access token lifetime: 60 minutes
-- Refresh token lifetime: 1 day
+- Access token lifetime: **60 minutes**
+- Refresh token lifetime: **1 day**
