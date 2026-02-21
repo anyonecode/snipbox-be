@@ -31,7 +31,7 @@
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.10+
 - pip
 - (Optional) Docker & Docker Compose
 
@@ -119,8 +119,8 @@ docker-compose down
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/token/` | Login — returns `access` + `refresh` tokens |
-| POST | `/api/token/refresh/` | Get a new access token using refresh token |
+| POST | `/api/v1/token/` | Login — returns `access` + `refresh` tokens |
+| POST | `/api/v1/token/refresh/` | Get a new access token using refresh token |
 
 > All CRUD endpoints require the header: `Authorization: Bearer <access_token>`
 
@@ -128,19 +128,19 @@ docker-compose down
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/snippets/` | Overview — total count + list with detail links |
-| POST | `/api/snippets/` | Create a new snippet |
-| GET | `/api/snippets/<id>/` | Get snippet detail (owner only) |
-| PUT | `/api/snippets/<id>/` | Full update |
-| PATCH | `/api/snippets/<id>/` | Partial update |
-| DELETE | `/api/snippets/<id>/` | Delete snippet; returns remaining list |
+| GET | `/api/v1/snippets/` | Overview — total count + list with detail links |
+| POST | `/api/v1/snippets/` | Create a new snippet |
+| GET | `/api/v1/snippets/<id>/` | Get snippet detail (owner only) |
+| PUT | `/api/v1/snippets/<id>/` | Full update |
+| PATCH | `/api/v1/snippets/<id>/` | Partial update |
+| DELETE | `/api/v1/snippets/<id>/` | Delete snippet; returns remaining list |
 
 ### Tags
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/tags/` | List all tags |
-| GET | `/api/tags/<id>/` | Tag detail + linked snippets (current user) |
+| GET | `/api/v1/tags/` | List all tags |
+| GET | `/api/v1/tags/<id>/` | Tag detail + linked snippets (current user) |
 
 ---
 
@@ -148,12 +148,12 @@ docker-compose down
 
 ```bash
 # 1. Login
-curl -X POST http://127.0.0.1:8000/api/token/ \
+curl -X POST http://127.0.0.1:8000/api/v1/token/ \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
 
 # 2. Create a snippet (replace <token> with the access token from step 1)
-curl -X POST http://127.0.0.1:8000/api/snippets/ \
+curl -X POST http://127.0.0.1:8000/api/v1/snippets/ \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
