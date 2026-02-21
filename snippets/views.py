@@ -4,11 +4,12 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 
-from .models import Snippet
+from .models import Snippet, Tag
 from .serializers import (
     SnippetListSerializer,
     SnippetDetailSerializer,
     SnippetWriteSerializer,
+    TagSerializer,
 )
 
 
@@ -193,5 +194,65 @@ class SnippetDetailUpdateDeleteView(APIView):
         except Exception as exc:
             return Response(
                 {'detail': 'An error occurred while deleting the snippet.', 'error': str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class TagListView(APIView):
+    """
+    GET /api/tags/  — List all available tags.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            tags = Tag.objects.all()
+            serializer = TagSerializer(tags, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as exc:
+            return Response(
+                {'detail': 'An error occurred while fetching tags.', 'error': str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class TagDetailView(APIView):
+    """
+    GET /api/tags/<pk>/  — Tag info + all snippets linked to it (current user only).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            tag = Tag.objects.get(pk=pk)
+        except Tag.DoesNotExist:
+            return Response(
+                {'detail': f'Tag with id {pk} not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as exc:
+            return Response(
+                {'detail': 'An error occurred while fetching the tag.', 'error': str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            tag_serializer = TagSerializer(tag)
+            snippets = tag.snippets.filter(user=request.user)
+            snippet_serializer = SnippetListSerializer(
+                snippets,
+                many=True,
+                context={'request': request},
+            )
+            return Response({
+                'tag': tag_serializer.data,
+                'total_snippets': snippets.count(),
+                'snippets': snippet_serializer.data,
+            }, status=status.HTTP_200_OK)
+        except Exception as exc:
+            return Response(
+                {'detail': 'An error occurred while fetching snippets for tag.', 'error': str(exc)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
